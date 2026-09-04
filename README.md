@@ -186,7 +186,7 @@ print("Final Decision:", state.get("final_trade_decision"))
 
 ---
 
-## 🛠️ Configuration Reference
+## Configuration Reference
 
 You can customize runtime behavior using environment variables or configuration dictionaries:
 
