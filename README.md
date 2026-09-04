@@ -1,7 +1,6 @@
-# Agent Trader 📈🤖
+# Agent Trader
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Multi-Agent Framework](https://img.shields.io/badge/Architecture-LangGraph%20Multi--Agent-green.svg)](https://github.com/langchain-ai/langgraph)
 [![Market Data](https://img.shields.io/badge/Data%20Vendor-Alpha%20Vantage-orange.svg)](https://www.alphavantage.co/)
 
@@ -11,7 +10,7 @@ By simulating the organizational structure of a quantitative hedge fund, Agent T
 
 ---
 
-## 🏛️ Multi-Agent Architecture
+## Multi-Agent Architecture
 
 ```mermaid
 flowchart TD
@@ -63,21 +62,21 @@ flowchart TD
 
 ---
 
-## ⚡ Supported LLM Providers
+## Supported LLM Providers
 
 Agent Trader is streamlined to support top-tier cloud and local LLM backends:
 
 | Provider | Description | Default Models |
 | :--- | :--- | :--- |
-| 🟢 **Google Gemini** | Flagship reasoning & fast multimodality with thinking controls | `gemini-3.5-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-pro` |
-| ⚡ **Groq** | Ultra-low latency LPU inference | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant` |
-| 🌐 **OpenRouter** | Unified gateway to all open & commercial models | `anthropic/claude-3.5-sonnet`, `deepseek/deepseek-r1`, `openai/gpt-4o` |
-| 🚀 **NVIDIA NIM** | High-performance enterprise AI microservices | `meta/llama-3.3-70b-instruct`, `nvidia/llama-3.1-nemotron-70b-instruct` |
-| 💻 **Ollama** | 100% offline & local models (with live local model auto-discovery) | `llama3.3`, `llama3.2`, `qwen2.5-coder`, `deepseek-r1` |
+|  **Google Gemini** | Flagship reasoning & fast multimodality with thinking controls | `gemini-3.5-flash`, `gemini-3.1-flash-lite`, `gemini-2.5-pro` |
+|  **Groq** | Ultra-low latency LPU inference | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant` |
+|  **OpenRouter** | Unified gateway to all open & commercial models | `anthropic/claude-3.5-sonnet`, `deepseek/deepseek-r1`, `openai/gpt-4o` |
+|  **NVIDIA NIM** | High-performance enterprise AI microservices | `meta/llama-3.3-70b-instruct`, `nvidia/llama-3.1-nemotron-70b-instruct` |
+|  **Ollama** | 100% offline & local models (with live local model auto-discovery) | `llama3.3`, `llama3.2`, `qwen2.5-coder`, `deepseek-r1` |
 
 ---
 
-## 📊 Market Data Pipeline
+## Market Data Pipeline
 
 Agent Trader automatically routes equities, technical indicators, corporate fundamentals, and news sentiment queries to **Alpha Vantage**:
 - **Daily / Intraday Price Bars (OHLCV)**
@@ -87,7 +86,7 @@ Agent Trader automatically routes equities, technical indicators, corporate fund
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone & Setup Environment
 
@@ -150,7 +149,7 @@ Follow the guided prompts:
 
 ---
 
-## 💻 Python Library Usage
+## Python Library Usage
 
 You can also run Agent Trader programmatically inside your custom pipelines:
 
@@ -205,7 +204,7 @@ You can customize runtime behavior using environment variables or configuration 
 
 ---
 
-## 🧪 Testing
+## Testing
 
 The repository includes a comprehensive test suite covering dataflows, prompt routing, model validation, and graph execution:
 
@@ -216,10 +215,4 @@ pytest
 
 ---
 
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-> ⚠️ **Disclaimer**: Agent Trader is built for research and educational purposes only. It is not financial or investment advice. Always perform your own due diligence before executing real trades.
+>  **Disclaimer**: Agent Trader is built for research and educational purposes only. It is not financial or investment advice. Always perform your own due diligence before executing real trades.
