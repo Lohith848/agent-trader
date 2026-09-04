@@ -51,117 +51,6 @@ class NormalizedChatOpenAI(ChatOpenAI):
         return super().with_structured_output(schema, method=method, **kwargs)
 
 
-class LocalCompatibleChatOpenAI(NormalizedChatOpenAI):
-    """OpenAI-compatible client for arbitrary local servers (LM Studio, vLLM,
-    llama.cpp via the generic ``openai_compatible`` provider).
-
-    Their tool-calling support varies, and many reject the object-form
-    ``tool_choice`` langchain sends for function-calling structured output. Bind
-    the schema as a tool but don't force tool_choice, so structured output works
-    across local servers regardless of the model ID's capabilities (#1057).
-    """
-
-    def with_structured_output(self, schema, *, method=None, **kwargs):
-        resolved = method or get_capabilities(self.model_name).preferred_structured_method
-        if resolved == "function_calling":
-            kwargs.setdefault("tool_choice", None)
-        return super().with_structured_output(schema, method=method, **kwargs)
-
-
-def _input_to_messages(input_: Any) -> list:
-    """Normalise a langchain LLM input to a list of message objects.
-
-    Accepts a list of messages, a ``ChatPromptValue`` (from a
-    ChatPromptTemplate), or anything else (treated as no messages).
-    Used by providers that need to walk the outgoing message history;
-    in particular DeepSeek thinking-mode propagation must work for
-    both bare-list invocations and ChatPromptTemplate-driven ones, so
-    treating only ``list`` here would silently skip half the call sites.
-    """
-    if isinstance(input_, list):
-        return input_
-    if hasattr(input_, "to_messages"):
-        return input_.to_messages()
-    return []
-
-
-class DeepSeekChatOpenAI(NormalizedChatOpenAI):
-    """DeepSeek-specific overrides on top of the OpenAI-compatible client.
-
-    Thinking-mode round-trip is the only DeepSeek-specific behavior that
-    stays here. When DeepSeek's thinking models return a response with
-    ``reasoning_content``, that field must be echoed back as part of the
-    assistant message on the next turn or the API fails with HTTP 400.
-    ``_create_chat_result`` captures it on receive and
-    ``_get_request_payload`` re-attaches it on send.
-
-    Tool-choice handling for V4 and reasoner — those models reject the
-    ``tool_choice`` parameter — is handled by the capability dispatch in
-    ``NormalizedChatOpenAI.with_structured_output``, not here.
-    """
-
-    def _get_request_payload(self, input_, *, stop=None, **kwargs):
-        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
-        outgoing = payload.get("messages", [])
-        for message_dict, message in zip(outgoing, _input_to_messages(input_), strict=False):
-            if not isinstance(message, AIMessage):
-                continue
-            reasoning = message.additional_kwargs.get("reasoning_content")
-            if reasoning is not None:
-                message_dict["reasoning_content"] = reasoning
-        return payload
-
-    def _create_chat_result(self, response, generation_info=None):
-        chat_result = super()._create_chat_result(response, generation_info)
-        response_dict = (
-            response
-            if isinstance(response, dict)
-            else response.model_dump(
-                exclude={"choices": {"__all__": {"message": {"parsed"}}}}
-            )
-        )
-        for generation, choice in zip(
-            chat_result.generations, response_dict.get("choices", []), strict=False
-        ):
-            reasoning = choice.get("message", {}).get("reasoning_content")
-            if reasoning is not None:
-                generation.message.additional_kwargs["reasoning_content"] = reasoning
-        return chat_result
-
-
-class MinimaxChatOpenAI(NormalizedChatOpenAI):
-    """MiniMax-specific overrides on top of the OpenAI-compatible client.
-
-    M2.x reasoning models embed ``<think>...</think>`` blocks directly in
-    ``message.content`` by default, which would pollute saved reports.
-    Per platform.minimax.io/docs/api-reference/text-openai-api,
-    ``reasoning_split=True`` redirects the thinking block into
-    ``reasoning_details`` so ``content`` stays clean. It is sent via
-    ``extra_body`` (not a top-level kwarg) because the openai SDK validates
-    top-level params and rejects unknown ones like reasoning_split (#826).
-
-    The flag is gated by ``ModelCapabilities.requires_reasoning_split`` so
-    only M2.x reasoning models receive it; non-reasoning MiniMax endpoints
-    (Coding Plan, MiniMax-Text-01) never see it.
-
-    Tool-choice handling for M2.x — those models accept only the string
-    enum ``{"none", "auto"}`` and reject langchain's function-spec dict —
-    is handled by the capability dispatch in
-    ``NormalizedChatOpenAI.with_structured_output``, not here.
-    """
-
-    def _get_request_payload(self, input_, *, stop=None, **kwargs):
-        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
-        if get_capabilities(self.model_name).requires_reasoning_split:
-            # Pass via extra_body, not as a top-level kwarg: the openai SDK
-            # (>=1.56) validates top-level params against Completions.create
-            # and rejects unknown ones like reasoning_split (#826). extra_body
-            # is forwarded into the request body untouched.
-            extra_body = payload.setdefault("extra_body", {})
-            extra_body.setdefault("reasoning_split", True)
-        return payload
-
-
 # Kwargs forwarded from user config to ChatOpenAI
 _PASSTHROUGH_KWARGS = (
     "timeout", "max_retries", "reasoning_effort", "temperature", "max_tokens",
@@ -206,30 +95,13 @@ class ProviderSpec:
     use_responses_api: bool = False           # native OpenAI Responses API
 
 
-# Single source of truth for the OpenAI-compatible provider family. Dual-region
-# providers (qwen/glm/minimax) keep separate endpoints because international and
-# China accounts cannot share credentials (#758).
+# Single source of truth for the OpenAI-compatible provider family.
 OPENAI_COMPATIBLE_PROVIDERS: dict[str, ProviderSpec] = {
-    "openai":     ProviderSpec(use_responses_api=True),
-    "xai":        ProviderSpec(base_url="https://api.x.ai/v1"),
-    "deepseek":   ProviderSpec(base_url="https://api.deepseek.com", chat_class=DeepSeekChatOpenAI),
-    "qwen":       ProviderSpec(base_url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1"),
-    "qwen-cn":    ProviderSpec(base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"),
-    "glm":        ProviderSpec(base_url="https://api.z.ai/api/paas/v4/"),
-    "glm-cn":     ProviderSpec(base_url="https://open.bigmodel.cn/api/paas/v4/"),
-    "minimax":    ProviderSpec(base_url="https://api.minimax.io/v1", chat_class=MinimaxChatOpenAI),
-    "minimax-cn": ProviderSpec(base_url="https://api.minimaxi.com/v1", chat_class=MinimaxChatOpenAI),
     "openrouter": ProviderSpec(base_url="https://openrouter.ai/api/v1"),
-    "mistral":    ProviderSpec(base_url="https://api.mistral.ai/v1"),
-    "kimi":       ProviderSpec(base_url="https://api.moonshot.ai/v1"),
     "groq":       ProviderSpec(base_url="https://api.groq.com/openai/v1"),
     "nvidia":     ProviderSpec(base_url="https://integrate.api.nvidia.com/v1"),
     "ollama":     ProviderSpec(base_url="http://localhost:11434/v1", base_url_env="OLLAMA_BASE_URL",
                                key_optional=True, placeholder_key="ollama"),
-    # Generic endpoint: user supplies base_url; key optional (keyless local).
-    "openai_compatible": ProviderSpec(
-        require_base_url=True, key_optional=True, chat_class=LocalCompatibleChatOpenAI
-    ),
 }
 
 

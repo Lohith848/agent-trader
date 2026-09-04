@@ -54,13 +54,13 @@ def _bare_graph(config):
 
 @pytest.mark.unit
 def test_not_forwarded_when_unset():
-    kwargs = _bare_graph({"llm_provider": "openai", "max_tokens": None})._get_provider_kwargs()
+    kwargs = _bare_graph({"llm_provider": "groq", "max_tokens": None})._get_provider_kwargs()
     assert "max_tokens" not in kwargs
     assert "max_output_tokens" not in kwargs
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("provider", ["openai", "anthropic", "deepseek", "openai_compatible"])
+@pytest.mark.parametrize("provider", ["groq", "openrouter", "nvidia", "ollama"])
 def test_forwarded_as_max_tokens_for_non_google(provider):
     kwargs = _bare_graph({"llm_provider": provider, "max_tokens": 8192})._get_provider_kwargs()
     assert kwargs["max_tokens"] == 8192
@@ -77,14 +77,14 @@ def test_forwarded_as_max_output_tokens_for_google():
 
 @pytest.mark.unit
 def test_env_string_is_coerced():
-    kwargs = _bare_graph({"llm_provider": "openai", "max_tokens": "4096"})._get_provider_kwargs()
+    kwargs = _bare_graph({"llm_provider": "groq", "max_tokens": "4096"})._get_provider_kwargs()
     assert kwargs["max_tokens"] == 4096
 
 
 @pytest.mark.unit
 def test_invalid_value_fails_loudly():
     with pytest.raises(ValueError):
-        _bare_graph({"llm_provider": "openai", "max_tokens": 0})._get_provider_kwargs()
+        _bare_graph({"llm_provider": "groq", "max_tokens": 0})._get_provider_kwargs()
 
 
 # --- client-side allowlists carry the kwarg --------------------------------

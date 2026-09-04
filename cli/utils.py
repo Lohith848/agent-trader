@@ -284,6 +284,59 @@ def select_openrouter_model(mode: str) -> str:
     return choice
 
 
+def _fetch_ollama_models() -> list[tuple[str, str]]:
+    """Fetch installed models from the local or configured Ollama instance."""
+    import requests
+    base_url = os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434"
+    base_url = base_url.rstrip("/")
+    if base_url.endswith("/v1"):
+        base_url = base_url[:-3]
+    try:
+        resp = requests.get(f"{base_url}/api/tags", timeout=3)
+        resp.raise_for_status()
+        models = resp.json().get("models", [])
+        return [(m["name"], m["name"]) for m in models if "name" in m]
+    except Exception:
+        return []
+
+
+def select_ollama_model(mode: str) -> str:
+    """Select an Ollama model from locally installed models, or enter a custom ID."""
+    installed = _fetch_ollama_models()
+    if installed:
+        choices = [questionary.Choice(name, value=mid) for name, mid in installed]
+    else:
+        choices = [
+            questionary.Choice(display, value=value)
+            for display, value in get_model_options("ollama", mode)
+        ]
+
+    # Ensure custom option is present
+    if not any(getattr(c, "value", None) == "custom" for c in choices):
+        choices.append(questionary.Choice("Custom model ID", value="custom"))
+
+    choice = questionary.select(
+        f"Select Your [{mode.title()}-Thinking] Ollama Model:",
+        choices=choices,
+        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        style=questionary.Style([
+            ("selected", "fg:magenta noinherit"),
+            ("highlighted", "fg:magenta noinherit"),
+            ("pointer", "fg:magenta noinherit"),
+        ]),
+    ).ask()
+
+    if choice is None:
+        console.print("\n[red]No model selected. Exiting...[/red]")
+        exit(1)
+    if choice == "custom":
+        return _require_text(
+            "Enter Ollama model ID (e.g. llama3.2:latest, qwen2.5-coder:7b):",
+            "Please enter a model ID.",
+        )
+    return choice
+
+
 def _prompt_custom_model_id() -> str:
     """Prompt user to type a custom model ID."""
     return _require_text("Enter model ID:", "Please enter a model ID.")
@@ -291,14 +344,11 @@ def _prompt_custom_model_id() -> str:
 
 def _select_model(provider: str, mode: str) -> str:
     """Select a model for the given provider and mode (quick/deep)."""
-    if provider.lower() == "openrouter":
+    p = provider.lower()
+    if p == "openrouter":
         return select_openrouter_model(mode)
-
-    if provider.lower() == "azure":
-        return _require_text(
-            f"Enter Azure deployment name ({mode}-thinking):",
-            "Please enter a deployment name.",
-        )
+    if p == "ollama":
+        return select_ollama_model(mode)
 
     choice = questionary.select(
         f"Select Your [{mode.title()}-Thinking LLM Engine]:",
@@ -340,29 +390,14 @@ def _llm_provider_table() -> list[tuple[str, str, str | None]]:
 
     Shared by the interactive picker and by env-driven configuration so an
     env-set provider resolves to the same default endpoint the menu uses.
-    Ollama users can point at a remote ollama-serve via OLLAMA_BASE_URL
-    (convention from the broader Ollama ecosystem); falls back to the
-    localhost default when unset.
     """
     ollama_url = os.environ.get("OLLAMA_BASE_URL") or "http://localhost:11434/v1"
     return [
-        ("OpenAI", "openai", "https://api.openai.com/v1"),
         ("Google", "google", None),
-        ("Anthropic", "anthropic", "https://api.anthropic.com/"),
-        ("xAI", "xai", "https://api.x.ai/v1"),
-        ("DeepSeek", "deepseek", "https://api.deepseek.com"),
-        ("Qwen", "qwen", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"),
-        ("GLM", "glm", "https://open.bigmodel.cn/api/paas/v4/"),
-        ("MiniMax", "minimax", "https://api.minimax.io/v1"),
-        ("OpenRouter", "openrouter", "https://openrouter.ai/api/v1"),
-        ("Mistral", "mistral", "https://api.mistral.ai/v1"),
-        ("Kimi (Moonshot)", "kimi", "https://api.moonshot.ai/v1"),
         ("Groq", "groq", "https://api.groq.com/openai/v1"),
+        ("OpenRouter", "openrouter", "https://openrouter.ai/api/v1"),
         ("NVIDIA NIM", "nvidia", "https://integrate.api.nvidia.com/v1"),
-        ("Azure OpenAI", "azure", None),
-        ("Amazon Bedrock", "bedrock", None),
         ("Ollama", "ollama", ollama_url),
-        ("OpenAI-compatible (vLLM, LM Studio, llama.cpp, custom relay)", "openai_compatible", None),
     ]
 
 
@@ -386,20 +421,6 @@ def resolve_backend_url(
     Otherwise the menu/region URL, then the provider's default.
     """
     return env_url or menu_url or provider_default_url(provider)
-
-
-def prompt_openai_compatible_url() -> str:
-    """Prompt for a custom OpenAI-compatible endpoint base URL."""
-    url = questionary.text(
-        "Enter the OpenAI-compatible base URL "
-        "(e.g. http://localhost:8000/v1 for vLLM, http://localhost:1234/v1 for LM Studio):",
-        validate=lambda x: x.strip().startswith(("http://", "https://"))
-        or "Enter a URL starting with http:// or https://",
-    ).ask()
-    if not url:
-        console.print("\n[red]No endpoint URL provided. Exiting...[/red]")
-        exit(1)
-    return url.strip()
 
 
 def select_llm_provider() -> tuple[str, str | None]:
@@ -430,46 +451,6 @@ def select_llm_provider() -> tuple[str, str | None]:
     return provider, url
 
 
-def ask_openai_reasoning_effort() -> str:
-    """Ask for OpenAI reasoning effort level."""
-    choices = [
-        questionary.Choice("Medium (Default)", "medium"),
-        questionary.Choice("High (More thorough)", "high"),
-        questionary.Choice("Low (Faster)", "low"),
-    ]
-    return questionary.select(
-        "Select Reasoning Effort:",
-        choices=choices,
-        style=questionary.Style([
-            ("selected", "fg:cyan noinherit"),
-            ("highlighted", "fg:cyan noinherit"),
-            ("pointer", "fg:cyan noinherit"),
-        ]),
-    ).ask()
-
-
-def ask_anthropic_effort() -> str | None:
-    """Ask for Anthropic effort level.
-
-    Controls token usage and response thoroughness on Claude 4.5 / 4.6 / 4.7
-    models. The API also accepts "max"; we expose low/medium/high as the
-    common selection range.
-    """
-    return questionary.select(
-        "Select Effort Level:",
-        choices=[
-            questionary.Choice("High (recommended)", "high"),
-            questionary.Choice("Medium (balanced)", "medium"),
-            questionary.Choice("Low (faster, cheaper)", "low"),
-        ],
-        style=questionary.Style([
-            ("selected", "fg:cyan noinherit"),
-            ("highlighted", "fg:cyan noinherit"),
-            ("pointer", "fg:cyan noinherit"),
-        ]),
-    ).ask()
-
-
 def ask_gemini_thinking_config() -> str | None:
     """Ask for Gemini thinking configuration.
 
@@ -486,86 +467,6 @@ def ask_gemini_thinking_config() -> str | None:
             ("selected", "fg:green noinherit"),
             ("highlighted", "fg:green noinherit"),
             ("pointer", "fg:green noinherit"),
-        ]),
-    ).ask()
-
-
-def ask_glm_region() -> tuple[str, str]:
-    """Ask which GLM platform (Z.AI international vs BigModel China) to use.
-
-    Zhipu serves the same GLM models under two brands with separate
-    accounts; keys aren't interchangeable. Returns (provider_key, backend_url).
-    """
-    return questionary.select(
-        "Select GLM platform:",
-        choices=[
-            questionary.Choice(
-                "Z.AI — api.z.ai (international, uses ZHIPU_API_KEY)",
-                value=("glm", "https://api.z.ai/api/paas/v4/"),
-            ),
-            questionary.Choice(
-                "BigModel — open.bigmodel.cn (China, uses ZHIPU_CN_API_KEY)",
-                value=("glm-cn", "https://open.bigmodel.cn/api/paas/v4/"),
-            ),
-        ],
-        style=questionary.Style([
-            ("selected", "fg:cyan noinherit"),
-            ("highlighted", "fg:cyan noinherit"),
-            ("pointer", "fg:cyan noinherit"),
-        ]),
-    ).ask()
-
-
-def ask_qwen_region() -> tuple[str, str]:
-    """Ask which Qwen region (international vs China) to use.
-
-    Alibaba DashScope exposes two endpoints with separate accounts —
-    a key from one region does NOT authenticate against the other
-    (fixes #758). Returns (provider_key, backend_url).
-    """
-    return questionary.select(
-        "Select Qwen region:",
-        choices=[
-            questionary.Choice(
-                "International — dashscope-intl.aliyuncs.com (uses DASHSCOPE_API_KEY)",
-                value=("qwen", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"),
-            ),
-            questionary.Choice(
-                "China — dashscope.aliyuncs.com (uses DASHSCOPE_CN_API_KEY)",
-                value=("qwen-cn", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
-            ),
-        ],
-        style=questionary.Style([
-            ("selected", "fg:cyan noinherit"),
-            ("highlighted", "fg:cyan noinherit"),
-            ("pointer", "fg:cyan noinherit"),
-        ]),
-    ).ask()
-
-
-def ask_minimax_region() -> tuple[str, str]:
-    """Ask which MiniMax region (global vs China) to use.
-
-    MiniMax exposes two endpoints with separate accounts — a key from
-    one region does NOT authenticate against the other. Returns
-    (provider_key, backend_url).
-    """
-    return questionary.select(
-        "Select MiniMax region:",
-        choices=[
-            questionary.Choice(
-                "Global — api.minimax.io (uses MINIMAX_API_KEY)",
-                value=("minimax", "https://api.minimax.io/v1"),
-            ),
-            questionary.Choice(
-                "China — api.minimaxi.com (uses MINIMAX_CN_API_KEY)",
-                value=("minimax-cn", "https://api.minimaxi.com/v1"),
-            ),
-        ],
-        style=questionary.Style([
-            ("selected", "fg:cyan noinherit"),
-            ("highlighted", "fg:cyan noinherit"),
-            ("pointer", "fg:cyan noinherit"),
         ]),
     ).ask()
 

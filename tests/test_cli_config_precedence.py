@@ -14,10 +14,10 @@ import cli.main as m
 # Minimal selections dict shaped like get_user_selections()'s return value.
 SELECTIONS = {
     "research_depth": 5,
-    "shallow_thinker": "gpt-5.4-mini",
-    "deep_thinker": "gpt-5.5",
+    "shallow_thinker": "gemini-3.1-flash-lite",
+    "deep_thinker": "gemini-3.5-flash",
     "backend_url": None,
-    "llm_provider": "openai",
+    "llm_provider": "google",
     "google_thinking_level": None,
     "openai_reasoning_effort": None,
     "anthropic_effort": None,

@@ -52,12 +52,12 @@ def _bare_graph(config):
 
 @pytest.mark.unit
 def test_not_forwarded_when_unset():
-    kwargs = _bare_graph({"llm_provider": "openai", "llm_max_retries": None})._get_provider_kwargs()
+    kwargs = _bare_graph({"llm_provider": "groq", "llm_max_retries": None})._get_provider_kwargs()
     assert "max_retries" not in kwargs
 
 
 @pytest.mark.unit
-@pytest.mark.parametrize("provider", ["openai", "anthropic", "google"])
+@pytest.mark.parametrize("provider", ["groq", "openrouter", "google"])
 def test_forwarded_across_providers(provider):
     kwargs = _bare_graph({"llm_provider": provider, "llm_max_retries": 6})._get_provider_kwargs()
     assert kwargs["max_retries"] == 6
@@ -66,14 +66,14 @@ def test_forwarded_across_providers(provider):
 @pytest.mark.unit
 def test_forwarded_env_string_is_coerced():
     # env vars arrive as strings; the consumer coerces (like temperature)
-    kwargs = _bare_graph({"llm_provider": "openai", "llm_max_retries": "4"})._get_provider_kwargs()
+    kwargs = _bare_graph({"llm_provider": "groq", "llm_max_retries": "4"})._get_provider_kwargs()
     assert kwargs["max_retries"] == 4
 
 
 @pytest.mark.unit
 def test_invalid_config_value_fails_loudly():
     with pytest.raises(ValueError):
-        _bare_graph({"llm_provider": "openai", "llm_max_retries": -1})._get_provider_kwargs()
+        _bare_graph({"llm_provider": "groq", "llm_max_retries": -1})._get_provider_kwargs()
 
 
 # --- env overlay -----------------------------------------------------------

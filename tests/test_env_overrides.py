@@ -20,9 +20,9 @@ def _reload_with_env(monkeypatch, **overrides):
 
 def test_no_env_uses_built_in_defaults(monkeypatch):
     dc = _reload_with_env(monkeypatch)
-    assert dc.DEFAULT_CONFIG["llm_provider"] == "openai"
-    assert dc.DEFAULT_CONFIG["deep_think_llm"] == "gpt-5.6"
-    assert dc.DEFAULT_CONFIG["quick_think_llm"] == "gpt-5.6-luna"
+    assert dc.DEFAULT_CONFIG["llm_provider"] == "google"
+    assert dc.DEFAULT_CONFIG["deep_think_llm"] == "gemini-3.5-flash"
+    assert dc.DEFAULT_CONFIG["quick_think_llm"] == "gemini-3.1-flash-lite"
     assert dc.DEFAULT_CONFIG["backend_url"] is None
     assert dc.DEFAULT_CONFIG["max_debate_rounds"] == 1
     assert dc.DEFAULT_CONFIG["checkpoint_enabled"] is False
@@ -31,15 +31,15 @@ def test_no_env_uses_built_in_defaults(monkeypatch):
 def test_string_overrides(monkeypatch):
     dc = _reload_with_env(
         monkeypatch,
-        TRADINGAGENTS_LLM_PROVIDER="google",
-        TRADINGAGENTS_DEEP_THINK_LLM="gemini-3-pro-preview",
-        TRADINGAGENTS_QUICK_THINK_LLM="gemini-3-flash-preview",
+        TRADINGAGENTS_LLM_PROVIDER="groq",
+        TRADINGAGENTS_DEEP_THINK_LLM="llama-3.3-70b-versatile",
+        TRADINGAGENTS_QUICK_THINK_LLM="llama-3.1-8b-instant",
         TRADINGAGENTS_LLM_BACKEND_URL="https://example.invalid/v1",
         TRADINGAGENTS_OUTPUT_LANGUAGE="Chinese",
     )
-    assert dc.DEFAULT_CONFIG["llm_provider"] == "google"
-    assert dc.DEFAULT_CONFIG["deep_think_llm"] == "gemini-3-pro-preview"
-    assert dc.DEFAULT_CONFIG["quick_think_llm"] == "gemini-3-flash-preview"
+    assert dc.DEFAULT_CONFIG["llm_provider"] == "groq"
+    assert dc.DEFAULT_CONFIG["deep_think_llm"] == "llama-3.3-70b-versatile"
+    assert dc.DEFAULT_CONFIG["quick_think_llm"] == "llama-3.1-8b-instant"
     assert dc.DEFAULT_CONFIG["backend_url"] == "https://example.invalid/v1"
     assert dc.DEFAULT_CONFIG["output_language"] == "Chinese"
 
@@ -74,11 +74,9 @@ def test_reasoning_thinking_overrides(monkeypatch):
         monkeypatch,
         TRADINGAGENTS_OPENAI_REASONING_EFFORT="high",
         TRADINGAGENTS_GOOGLE_THINKING_LEVEL="minimal",
-        TRADINGAGENTS_ANTHROPIC_EFFORT="low",
     )
     assert dc.DEFAULT_CONFIG["openai_reasoning_effort"] == "high"
     assert dc.DEFAULT_CONFIG["google_thinking_level"] == "minimal"
-    assert dc.DEFAULT_CONFIG["anthropic_effort"] == "low"
 
 
 def test_reasoning_effort_defaults_to_none(monkeypatch):
@@ -86,7 +84,6 @@ def test_reasoning_effort_defaults_to_none(monkeypatch):
     dc = _reload_with_env(monkeypatch)
     assert dc.DEFAULT_CONFIG["openai_reasoning_effort"] is None
     assert dc.DEFAULT_CONFIG["google_thinking_level"] is None
-    assert dc.DEFAULT_CONFIG["anthropic_effort"] is None
 
 
 def test_empty_env_value_is_passthrough(monkeypatch):
@@ -96,7 +93,7 @@ def test_empty_env_value_is_passthrough(monkeypatch):
         TRADINGAGENTS_LLM_PROVIDER="",
         TRADINGAGENTS_MAX_DEBATE_ROUNDS="",
     )
-    assert dc.DEFAULT_CONFIG["llm_provider"] == "openai"
+    assert dc.DEFAULT_CONFIG["llm_provider"] == "google"
     assert dc.DEFAULT_CONFIG["max_debate_rounds"] == 1
 
 

@@ -22,18 +22,12 @@ from rich.text import Text
 from cli.announcements import display_announcements, fetch_announcements
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import (
-    ask_anthropic_effort,
     ask_gemini_thinking_config,
-    ask_glm_region,
-    ask_minimax_region,
-    ask_openai_reasoning_effort,
     ask_output_language,
-    ask_qwen_region,
     confirm_ollama_endpoint,
     detect_asset_type,
     ensure_api_key,
     get_ticker,
-    prompt_openai_compatible_url,
     resolve_backend_url,
     select_analysts,
     select_deep_thinking_agent,
@@ -643,26 +637,11 @@ def get_user_selections():
         )
         selected_llm_provider, backend_url = select_llm_provider()
 
-        # Providers with regional endpoints prompt for the region as a secondary
-        # step so the main dropdown stays clean (mainland China and international
-        # accounts cannot share API keys).
-        if selected_llm_provider == "qwen":
-            selected_llm_provider, backend_url = ask_qwen_region()
-        elif selected_llm_provider == "minimax":
-            selected_llm_provider, backend_url = ask_minimax_region()
-        elif selected_llm_provider == "glm":
-            selected_llm_provider, backend_url = ask_glm_region()
-
         # Honor an explicit env backend URL even when the provider was chosen
         # interactively, so it isn't overwritten by the menu default (#978).
         backend_url = resolve_backend_url(
             selected_llm_provider, backend_url, env_url=DEFAULT_CONFIG["backend_url"]
         )
-
-        # The generic OpenAI-compatible endpoint has no default; ask for it if
-        # neither the menu nor the environment supplied one.
-        if selected_llm_provider == "openai_compatible" and not backend_url:
-            backend_url = prompt_openai_compatible_url()
 
         # For Ollama, surface the resolved endpoint (OLLAMA_BASE_URL vs default)
         # before model selection so it's obvious where we're connecting.
@@ -697,31 +676,15 @@ def get_user_selections():
     # value is used — same env-precedence rule as the steps above. None = each
     # provider's own default.
     thinking_level = None
-    reasoning_effort = None
-    anthropic_effort = None
 
     provider_lower = selected_llm_provider.lower()
     if provider_from_env:
         thinking_level = DEFAULT_CONFIG["google_thinking_level"]
-        reasoning_effort = DEFAULT_CONFIG["openai_reasoning_effort"]
-        anthropic_effort = DEFAULT_CONFIG["anthropic_effort"]
     elif provider_lower == "google":
         thinking_level = thinking_value_or_prompt(
             "TRADINGAGENTS_GOOGLE_THINKING_LEVEL", "google_thinking_level",
             "Gemini thinking mode", "Step 8: Thinking Mode",
             "Configure Gemini thinking mode", ask_gemini_thinking_config,
-        )
-    elif provider_lower == "openai":
-        reasoning_effort = thinking_value_or_prompt(
-            "TRADINGAGENTS_OPENAI_REASONING_EFFORT", "openai_reasoning_effort",
-            "Reasoning effort", "Step 8: Reasoning Effort",
-            "Configure OpenAI reasoning effort level", ask_openai_reasoning_effort,
-        )
-    elif provider_lower == "anthropic":
-        anthropic_effort = thinking_value_or_prompt(
-            "TRADINGAGENTS_ANTHROPIC_EFFORT", "anthropic_effort",
-            "Claude effort", "Step 8: Effort Level",
-            "Configure Claude effort level", ask_anthropic_effort,
         )
 
     return {
@@ -735,8 +698,8 @@ def get_user_selections():
         "shallow_thinker": selected_shallow_thinker,
         "deep_thinker": selected_deep_thinker,
         "google_thinking_level": thinking_level,
-        "openai_reasoning_effort": reasoning_effort,
-        "anthropic_effort": anthropic_effort,
+        "openai_reasoning_effort": None,
+        "anthropic_effort": None,
         "output_language": output_language,
     }
 

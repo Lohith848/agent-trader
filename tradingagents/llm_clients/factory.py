@@ -28,25 +28,12 @@ def create_llm_client(
     """
     provider_lower = provider.lower()
 
-    # Native (non-OpenAI) APIs are matched first so their string check doesn't
-    # import the OpenAI client. Everything else is OpenAI-compatible and routes
-    # through the provider registry (single source of truth).
-    if provider_lower == "anthropic":
-        from .anthropic_client import AnthropicClient
-        return AnthropicClient(model, base_url, **kwargs)
-
+    # Native Google Gemini API
     if provider_lower == "google":
         from .google_client import GoogleClient
         return GoogleClient(model, base_url, **kwargs)
 
-    if provider_lower == "azure":
-        from .azure_client import AzureOpenAIClient
-        return AzureOpenAIClient(model, base_url, **kwargs)
-
-    if provider_lower == "bedrock":
-        from .bedrock_client import BedrockClient
-        return BedrockClient(model, base_url, **kwargs)
-
+    # OpenAI-compatible providers: groq, openrouter, nvidia, ollama
     from .openai_client import OpenAIClient, is_openai_compatible
     if is_openai_compatible(provider_lower):
         return OpenAIClient(model, base_url, provider=provider_lower, **kwargs)

@@ -16,13 +16,10 @@ class TestTemperatureForwarding:
     @pytest.mark.parametrize(
         "provider,model",
         [
-            # gpt-4.1 is intentionally a non-reasoning model: the GPT-5 family
-            # are reasoning models and correctly drop temperature (see
-            # test_openai_reasoning_effort), so forwarding is tested on gpt-4.1.
-            ("openai", "gpt-4.1"),
-            ("anthropic", "claude-sonnet-5"),
             ("google", "gemini-3.5-flash"),
-            ("deepseek", "deepseek-chat"),
+            ("groq", "llama-3.3-70b-versatile"),
+            ("openrouter", "meta-llama/llama-3.3-70b-instruct"),
+            ("nvidia", "meta/llama-3.3-70b-instruct"),
         ],
     )
     def test_temperature_reaches_client_when_set(self, provider, model):
@@ -34,7 +31,7 @@ class TestTemperatureForwarding:
     def test_temperature_omitted_leaves_provider_default(self):
         # Not passing temperature must not force it to a value.
         llm = create_llm_client(
-            provider="openai", model="gpt-4.1", api_key="placeholder"
+            provider="groq", model="llama-3.3-70b-versatile", api_key="placeholder"
         ).get_llm()
         # langchain's default is unset/None, not 0.0
         assert llm.temperature is None

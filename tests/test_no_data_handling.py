@@ -65,16 +65,11 @@ class TestRouteToVendorSentinel(unittest.TestCase):
         self.assertIn("Do not estimate", result)
 
     def test_unconfigured_fallback_does_not_mask_no_data(self):
-        # When the primary vendor reports no data and the fallback is simply
-        # unavailable (e.g. missing API key -> raises), the no-data sentinel
-        # must win rather than the fallback's incidental error crashing out.
+        # When alpha_vantage reports no data, the no-data sentinel must be returned.
         def raises_no_data(symbol, *a, **k):
             raise NoMarketDataError(symbol, symbol, "no rows")
 
-        def raises_unavailable(symbol, *a, **k):
-            raise ValueError("ALPHA_VANTAGE_API_KEY environment variable is not set.")
-
-        patched = {"yfinance": raises_no_data, "alpha_vantage": raises_unavailable}
+        patched = {"alpha_vantage": raises_no_data}
         with mock.patch.dict(
             interface.VENDOR_METHODS, {"get_stock_data": patched}, clear=False
         ):

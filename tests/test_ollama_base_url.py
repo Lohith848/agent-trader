@@ -57,11 +57,11 @@ def test_resolver_evaluation_is_call_time(monkeypatch):
 
 
 def test_resolver_does_not_affect_other_providers(monkeypatch):
-    """OLLAMA_BASE_URL should NOT leak into xai/deepseek/etc."""
+    """OLLAMA_BASE_URL should NOT leak into groq/openrouter/etc."""
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://elsewhere/v1")
     mod = _reload_client()
-    assert _base_url(mod, "xai") == "https://api.x.ai/v1"
-    assert _base_url(mod, "deepseek") == "https://api.deepseek.com"
+    assert _base_url(mod, "groq") == "https://api.groq.com/openai/v1"
+    assert _base_url(mod, "openrouter") == "https://openrouter.ai/api/v1"
 
 
 def test_client_get_llm_picks_up_env(monkeypatch):

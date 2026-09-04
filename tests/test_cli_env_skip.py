@@ -16,8 +16,9 @@ import pytest
 class TestProviderDefaultUrl(unittest.TestCase):
     def test_known_providers_resolve(self):
         from cli.utils import provider_default_url
-        self.assertEqual(provider_default_url("openai"), "https://api.openai.com/v1")
-        self.assertEqual(provider_default_url("DeepSeek"), "https://api.deepseek.com")
+        self.assertEqual(provider_default_url("groq"), "https://api.groq.com/openai/v1")
+        self.assertEqual(provider_default_url("openrouter"), "https://openrouter.ai/api/v1")
+        self.assertEqual(provider_default_url("nvidia"), "https://integrate.api.nvidia.com/v1")
         self.assertIsNone(provider_default_url("google"))  # uses SDK default
 
     def test_unknown_provider_returns_none(self):
@@ -36,18 +37,18 @@ class TestCliSkipsPromptsFromEnv(unittest.TestCase):
         import cli.main as m
 
         env = {
-            "TRADINGAGENTS_LLM_PROVIDER": "openai",
-            "TRADINGAGENTS_DEEP_THINK_LLM": "kimi-k2.5",
-            "TRADINGAGENTS_QUICK_THINK_LLM": "deepseek-v4-pro",
-            "TRADINGAGENTS_LLM_BACKEND_URL": "https://opencode.ai/zen/go/v1",
+            "TRADINGAGENTS_LLM_PROVIDER": "groq",
+            "TRADINGAGENTS_DEEP_THINK_LLM": "llama-3.3-70b-versatile",
+            "TRADINGAGENTS_QUICK_THINK_LLM": "llama-3.1-8b-instant",
+            "TRADINGAGENTS_LLM_BACKEND_URL": "https://api.groq.com/openai/v1",
             "TRADINGAGENTS_OUTPUT_LANGUAGE": "Japanese",
         }
         fake_cfg = dict(m.DEFAULT_CONFIG)
         fake_cfg.update({
-            "llm_provider": "openai",
-            "backend_url": "https://opencode.ai/zen/go/v1",
-            "quick_think_llm": "deepseek-v4-pro",
-            "deep_think_llm": "kimi-k2.5",
+            "llm_provider": "groq",
+            "backend_url": "https://api.groq.com/openai/v1",
+            "quick_think_llm": "llama-3.1-8b-instant",
+            "deep_think_llm": "llama-3.3-70b-versatile",
             "output_language": "Japanese",
         })
 
@@ -75,10 +76,10 @@ class TestCliSkipsPromptsFromEnv(unittest.TestCase):
         ensure_key.assert_called_once()
 
         # The env values flow into the returned selections.
-        self.assertEqual(sel["llm_provider"], "openai")
-        self.assertEqual(sel["backend_url"], "https://opencode.ai/zen/go/v1")
-        self.assertEqual(sel["shallow_thinker"], "deepseek-v4-pro")
-        self.assertEqual(sel["deep_thinker"], "kimi-k2.5")
+        self.assertEqual(sel["llm_provider"], "groq")
+        self.assertEqual(sel["backend_url"], "https://api.groq.com/openai/v1")
+        self.assertEqual(sel["shallow_thinker"], "llama-3.1-8b-instant")
+        self.assertEqual(sel["deep_thinker"], "llama-3.3-70b-versatile")
         self.assertEqual(sel["output_language"], "Japanese")
 
 
@@ -103,11 +104,10 @@ class TestResearchDepthSkippedFromEnv(unittest.TestCase):
              mock.patch.object(m, "select_analysts", return_value=[]), \
              mock.patch.object(m, "select_research_depth") as prompt_depth, \
              mock.patch.object(m, "ensure_api_key"), \
-             mock.patch.object(m, "select_llm_provider", return_value=("openai", None)), \
+             mock.patch.object(m, "select_llm_provider", return_value=("groq", None)), \
              mock.patch.object(m, "ask_output_language", return_value="English"), \
-             mock.patch.object(m, "select_shallow_thinking_agent", return_value="gpt-5.4-mini"), \
-             mock.patch.object(m, "select_deep_thinking_agent", return_value="gpt-5.5"), \
-             mock.patch.object(m, "ask_openai_reasoning_effort", return_value=None):
+             mock.patch.object(m, "select_shallow_thinking_agent", return_value="llama-3.1-8b-instant"), \
+             mock.patch.object(m, "select_deep_thinking_agent", return_value="llama-3.3-70b-versatile"):
             sel = m.get_user_selections()
 
         # The research-depth prompt is skipped; the value comes from the env config.
@@ -120,9 +120,9 @@ class TestReasoningEffortSkippedFromEnv(unittest.TestCase):
     def test_effort_env_skips_step8_prompt(self):
         import cli.main as m
 
-        env = {"TRADINGAGENTS_OPENAI_REASONING_EFFORT": "high"}
+        env = {"TRADINGAGENTS_GOOGLE_THINKING_LEVEL": "minimal"}
         fake_cfg = dict(m.DEFAULT_CONFIG)
-        fake_cfg.update({"openai_reasoning_effort": "high"})
+        fake_cfg.update({"google_thinking_level": "minimal"})
 
         with mock.patch.dict(os.environ, env, clear=False), \
              mock.patch.object(m, "DEFAULT_CONFIG", fake_cfg), \
@@ -133,16 +133,16 @@ class TestReasoningEffortSkippedFromEnv(unittest.TestCase):
              mock.patch.object(m, "select_analysts", return_value=[]), \
              mock.patch.object(m, "select_research_depth", return_value=1), \
              mock.patch.object(m, "ensure_api_key"), \
-             mock.patch.object(m, "select_llm_provider", return_value=("openai", None)), \
+             mock.patch.object(m, "select_llm_provider", return_value=("google", None)), \
              mock.patch.object(m, "ask_output_language", return_value="English"), \
-             mock.patch.object(m, "select_shallow_thinking_agent", return_value="gpt-5.4-mini"), \
-             mock.patch.object(m, "select_deep_thinking_agent", return_value="gpt-5.5"), \
-             mock.patch.object(m, "ask_openai_reasoning_effort") as prompt_effort:
+             mock.patch.object(m, "select_shallow_thinking_agent", return_value="gemini-3.1-flash-lite"), \
+             mock.patch.object(m, "select_deep_thinking_agent", return_value="gemini-3.5-flash"), \
+             mock.patch.object(m, "ask_gemini_thinking_config") as prompt_effort:
             sel = m.get_user_selections()
 
-        # The reasoning-effort prompt is skipped; the value comes from env config.
+        # The thinking level prompt is skipped; the value comes from env config.
         prompt_effort.assert_not_called()
-        self.assertEqual(sel["openai_reasoning_effort"], "high")
+        self.assertEqual(sel["google_thinking_level"], "minimal")
 
 
 if __name__ == "__main__":
