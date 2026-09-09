@@ -1,4 +1,4 @@
-# Agent Trader
+# Agent Trader.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Multi-Agent Framework](https://img.shields.io/badge/Architecture-LangGraph%20Multi--Agent-green.svg)](https://github.com/langchain-ai/langgraph)
