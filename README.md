@@ -216,3 +216,9 @@ pytest
 ---
 
 >  **Disclaimer**: Agent Trader is built for research and educational purposes only. It is not financial or investment advice. Always perform your own due diligence before executing real trades. 
+
+---
+
+## By 
+
+**Lohith G**
